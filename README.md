@@ -112,7 +112,7 @@ Desktop Widgets (azclock) · Clipboard Indicator · Tiling Assistant · User The
 Para capturar menus e a Visão geral (que fecham quando se aperta uma tecla de print), use o terminal:
 
 ```bash
-print-atrasado      # espera 5 s, abra o menu; salva em Imagens/Capturas de tela
+print-atrasado      # espera 5 s; abra o menu. Salva em Imagens/Capturas de tela e copia para o Ctrl+V
 print-atrasado 10   # espera 10 s
 ```
 

@@ -1,5 +1,5 @@
 #!/usr/bin/gjs -m
-// Print da tela inteira depois de alguns segundos, salvo em arquivo.
+// Print da tela inteira depois de alguns segundos: salva em arquivo e copia para o Ctrl + V.
 // Serve para capturar menus e a Visão geral: rode, abra o menu e espere.
 //   print-atrasado            -> espera 5 s, salva em Imagens/Capturas de tela
 //   print-atrasado 8          -> espera 8 s
@@ -34,8 +34,16 @@ function capture() {
                     throw new Error('captura cancelada');
                 GLib.mkdir_with_parents(GLib.path_get_dirname(dest), 0o755);
                 const src = Gio.File.new_for_uri(results.uri.deepUnpack());
-                src.move(Gio.File.new_for_path(dest), Gio.FileCopyFlags.OVERWRITE, null, null);
+                const out = Gio.File.new_for_path(dest);
+                src.move(out, Gio.FileCopyFlags.OVERWRITE, null, null);
                 print(dest);
+                // Também coloca no Ctrl + V (o print-clipboard segura a imagem e apaga a cópia temporária)
+                const tmp = GLib.build_filenamev([GLib.get_user_runtime_dir(),
+                    `print-atrasado-${GLib.random_int()}.png`]);
+                out.copy(Gio.File.new_for_path(tmp), Gio.FileCopyFlags.OVERWRITE, null, null);
+                GLib.spawn_async(null, ['/usr/bin/gjs', '-m',
+                    GLib.build_filenamev([GLib.get_home_dir(), '.local', 'bin', 'print-clipboard']),
+                    'copiar', tmp], null, GLib.SpawnFlags.DEFAULT, null);
             } catch (e) {
                 printerr(e.message);
                 status = 1;
