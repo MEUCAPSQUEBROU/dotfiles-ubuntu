@@ -25,6 +25,12 @@ O Variety troca o wallpaper a cada 20 minutos; os widgets ficam sempre por cima.
     <td><img src="docs/wallpaper-floresta.jpg" alt="Área de trabalho com wallpaper de floresta"></td>
     <td><img src="docs/wallpaper-vila.jpg" alt="Área de trabalho com wallpaper de vila"></td>
   </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/terminal-fastfetch.jpg" alt="Terminal Ptyxis com fastfetch mostrando tema MacTahoe-Dark-grey e ícones Yaru-white-dark">
+      <br><sub>Terminal Ptyxis com <code>fastfetch</code>: tema MacTahoe-Dark-grey, ícones Yaru-white-dark</sub>
+    </td>
+  </tr>
 </table>
 
 ## Sumário
