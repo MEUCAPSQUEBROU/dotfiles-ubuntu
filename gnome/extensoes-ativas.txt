@@ -1,0 +1,9 @@
+ding@rastersoft.com
+ubuntu-dock@ubuntu.com
+tiling-assistant@ubuntu.com
+user-theme@gnome-shell-extensions.gcampax.github.com
+azclock@azclock.gitlab.com
+light-style@gnome-shell-extensions.gcampax.github.com
+windowsNavigator@gnome-shell-extensions.gcampax.github.com
+apps-menu@gnome-shell-extensions.gcampax.github.com
+clipboard-indicator@tudmotu.com

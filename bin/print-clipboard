@@ -1,0 +1,229 @@
+#!/usr/bin/gjs -m
+// Captura de tela direto para a área de transferência (Ctrl + V), sem salvar arquivo.
+//   print-clipboard area   → congela a tela, clique e arraste, solte (Super + S)
+//   print-clipboard tela   → tela inteira na hora (Super + Shift + S)
+//
+// A captura é feita pelo portal do sistema (funciona no Wayland). O arquivo que
+// o portal cria é apagado. O processo fica vivo segurando a imagem até você
+// copiar outra coisa.
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import {programArgs} from 'system';
+
+GLib.setenv('GDK_BACKEND', 'x11', true); // área de transferência sem depender de foco
+const {default: Gtk} = await import('gi://Gtk?version=4.0');
+const {default: Gdk} = await import('gi://Gdk?version=4.0');
+const {default: GdkPixbuf} = await import('gi://GdkPixbuf');
+
+const mode = ['tela', 'copiar'].includes(programArgs[0]) ? programArgs[0] : 'area';
+const loop = new GLib.MainLoop(null, false);
+const SCRIPT = GLib.build_filenamev([GLib.get_home_dir(), '.local', 'bin', 'print-clipboard']);
+const bus = Gio.DBus.session;
+
+// Tira um print da tela inteira, sem nenhuma interface
+function takeScreenshot() {
+    return new Promise((resolve, reject) => {
+        const token = `print${GLib.random_int()}`;
+        const sender = bus.get_unique_name().slice(1).replace(/\./g, '_');
+        const requestPath = `/org/freedesktop/portal/desktop/request/${sender}/${token}`;
+
+        const sub = bus.signal_subscribe('org.freedesktop.portal.Desktop',
+            'org.freedesktop.portal.Request', 'Response', requestPath, null,
+            Gio.DBusSignalFlags.NO_MATCH_RULE, (_c, _s, _p, _i, _n, params) => {
+                bus.signal_unsubscribe(sub);
+                const [code, results] = params.deepUnpack();
+                if (code !== 0)
+                    reject(new Error('cancelado'));
+                else
+                    resolve(results.uri.deepUnpack());
+            });
+
+        bus.call('org.freedesktop.portal.Desktop', '/org/freedesktop/portal/desktop',
+            'org.freedesktop.portal.Screenshot', 'Screenshot',
+            new GLib.Variant('(sa{sv})', ['', {
+                handle_token: new GLib.Variant('s', token),
+                interactive: new GLib.Variant('b', false),
+            }]),
+            null, Gio.DBusCallFlags.NONE, -1, null, (c, res) => {
+                try {
+                    c.call_finish(res);
+                } catch (e) {
+                    bus.signal_unsubscribe(sub);
+                    reject(e);
+                }
+            });
+    });
+}
+
+// Coloca o PNG no Ctrl + V e espera até outra coisa ser copiada
+function copyAndWait(pngBytes) {
+    const clipboard = Gdk.Display.get_default().get_clipboard();
+    clipboard.set_content(Gdk.ContentProvider.new_for_bytes('image/png', pngBytes));
+    clipboard.connect('changed', () => {
+        if (!clipboard.is_local())
+            loop.quit();
+    });
+}
+
+function pixbufToPng(pixbuf) {
+    const [, buffer] = pixbuf.save_to_bufferv('png', [], []);
+    return new GLib.Bytes(buffer);
+}
+
+// Escurece a tela de leve (sem congelar): clique e arraste para escolher a área.
+// A captura só acontece depois que o mouse é solto.
+function selectArea(onSelected) {
+    const css = new Gtk.CssProvider();
+    css.load_from_string('window.print-overlay { background-color: transparent; }');
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+
+    const win = new Gtk.Window({decorated: false, css_classes: ['print-overlay']});
+    const area = new Gtk.DrawingArea();
+    area.set_cursor_from_name('crosshair');
+    win.set_child(area);
+
+    let start = null;
+    let rect = null;
+
+    area.set_draw_func((_a, cr, width, height) => {
+        // Escurece tudo, menos a área selecionada
+        cr.setSourceRGBA(0, 0, 0, 0.3);
+        cr.rectangle(0, 0, width, height);
+        if (rect) {
+            cr.setFillRule(1); // EVEN_ODD: "recorta" a seleção
+            cr.rectangle(rect.x, rect.y, rect.w, rect.h);
+        }
+        cr.fill();
+
+        if (rect) {
+            cr.setSourceRGBA(1, 1, 1, 0.9);
+            cr.setLineWidth(1);
+            cr.rectangle(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+            cr.stroke();
+        }
+        cr.$dispose();
+    });
+
+    const cancel = () => {
+        win.destroy();
+        loop.quit();
+    };
+
+    const drag = new Gtk.GestureDrag();
+    drag.connect('drag-begin', (_g, x, y) => {
+        start = [x, y];
+        rect = null;
+    });
+    drag.connect('drag-update', (_g, dx, dy) => {
+        const [x, y] = start;
+        rect = {
+            x: Math.min(x, x + dx), y: Math.min(y, y + dy),
+            w: Math.abs(dx), h: Math.abs(dy),
+        };
+        area.queue_draw();
+    });
+    drag.connect('drag-end', () => {
+        if (!rect || rect.w < 3 || rect.h < 3) { // só um clique: cancela
+            cancel();
+            return;
+        }
+        const size = [area.get_width(), area.get_height()];
+        const chosen = rect;
+        win.destroy();
+        // Espera o escurecido sumir da tela antes de capturar
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
+            onSelected(chosen, size);
+            return GLib.SOURCE_REMOVE;
+        });
+    });
+    area.add_controller(drag);
+
+    // Esc ou botão direito cancelam
+    const keys = new Gtk.EventControllerKey();
+    keys.connect('key-pressed', (_c, keyval) => {
+        if (keyval === Gdk.KEY_Escape)
+            cancel();
+        return false;
+    });
+    win.add_controller(keys);
+    const rightClick = new Gtk.GestureClick({button: 3});
+    rightClick.connect('pressed', cancel);
+    area.add_controller(rightClick);
+
+    win.fullscreen();
+    win.present();
+}
+
+// Captura a tela inteira pelo portal e devolve os bytes do PNG (o arquivo é apagado)
+async function captureScreen() {
+    const uri = await takeScreenshot();
+    const file = Gio.File.new_for_uri(uri);
+    const [, bytes] = file.load_contents(null);
+    file.delete(null); // não guarda arquivo
+    return new GLib.Bytes(bytes);
+}
+
+// Erros vão para o terminal e para $XDG_RUNTIME_DIR/print-clipboard.log
+function reportError(e) {
+    if (e.message === 'cancelado')
+        return;
+    const msg = `${new Date().toISOString()} ${mode}: ${e.message}\n`;
+    printerr(`print-clipboard: ${e.message}`);
+    const log = Gio.File.new_for_path(GLib.build_filenamev([GLib.get_user_runtime_dir(), 'print-clipboard.log']));
+    const out = log.append_to(Gio.FileCreateFlags.NONE, null);
+    out.write_all(new TextEncoder().encode(msg), null);
+    out.close(null);
+}
+
+// Selecionar a área e copiar a imagem recortada.
+// A captura é esperada fora do loop.run(): uma Promise resolvida dentro do loop
+// não continua, e o script ficava travado esperando a captura.
+async function captureArea() {
+    let selection = null;
+    selectArea((rect, size) => {
+        selection = [rect, size];
+        loop.quit();
+    });
+    loop.run();
+    if (!selection)
+        return; // cancelado
+
+    const [rect, [areaW, areaH]] = selection;
+    const loader = new GdkPixbuf.PixbufLoader();
+    loader.write_bytes(await captureScreen());
+    loader.close();
+    const pixbuf = loader.get_pixbuf();
+    const sx = pixbuf.get_width() / areaW;
+    const sy = pixbuf.get_height() / areaH;
+    const x = Math.max(0, Math.round(rect.x * sx));
+    const y = Math.max(0, Math.round(rect.y * sy));
+    const w = Math.min(pixbuf.get_width() - x, Math.round(rect.w * sx));
+    const h = Math.min(pixbuf.get_height() - y, Math.round(rect.h * sy));
+
+    // A cópia fica com um processo novo, que não abriu janela, igual ao Super + Shift + S
+    const tmp = GLib.build_filenamev([GLib.get_user_runtime_dir(),
+        `print-clipboard-${GLib.random_int()}.png`]);
+    GLib.file_set_contents(tmp, pixbufToPng(pixbuf.new_subpixbuf(x, y, w, h)).toArray());
+    GLib.spawn_async(null, ['/usr/bin/gjs', '-m', SCRIPT, 'copiar', tmp], null,
+        GLib.SpawnFlags.DEFAULT, null);
+}
+
+try {
+    Gtk.init();
+    if (mode === 'area') {
+        await captureArea();
+    } else {
+        if (mode === 'tela') {
+            copyAndWait(await captureScreen());
+        } else { // copiar <arquivo.png>
+            const file = Gio.File.new_for_path(programArgs[1]);
+            const [, bytes] = file.load_contents(null);
+            file.delete(null);
+            copyAndWait(new GLib.Bytes(bytes));
+        }
+        loop.run();
+    }
+} catch (e) {
+    reportError(e);
+}

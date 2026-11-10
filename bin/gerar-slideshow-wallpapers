@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Gera um slideshow de papel de parede do GNOME a partir de uma pasta de imagens.
+# Uso: gerar-slideshow-wallpapers [minutos_por_imagem] [pasta]
+set -euo pipefail
+MIN="${1:-30}"
+DIR="${2:-$HOME/Imagens/Wallpapers}"
+XML="$HOME/.local/share/backgrounds/slideshow.xml"
+DUR=$((MIN * 60))
+TRANS=2
+
+mapfile -t IMGS < <(find "$DIR" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) | sort)
+[ "${#IMGS[@]}" -ge 2 ] || { echo "Precisa de pelo menos 2 imagens em $DIR"; exit 1; }
+
+{
+  echo '<background>'
+  echo '  <starttime><year>2026</year><month>1</month><day>1</day><hour>0</hour><minute>0</minute><second>0</second></starttime>'
+  n=${#IMGS[@]}
+  for ((i=0; i<n; i++)); do
+    cur="${IMGS[i]}"; next="${IMGS[(i+1)%n]}"
+    echo "  <static><duration>$DUR</duration><file>$cur</file></static>"
+    echo "  <transition type=\"overlay\"><duration>$TRANS</duration><from>$cur</from><to>$next</to></transition>"
+  done
+  echo '</background>'
+} > "$XML"
+
+cat > "$HOME/.local/share/gnome-background-properties/slideshow.xml" <<P
+<?xml version="1.0"?>
+<!DOCTYPE wallpapers SYSTEM "gnome-wp-list.dtd">
+<wallpapers>
+  <wallpaper deleted="false">
+    <name>Slideshow Wallpapers</name>
+    <filename>$XML</filename>
+    <options>zoom</options>
+  </wallpaper>
+</wallpapers>
+P
+
+gsettings set org.gnome.desktop.background picture-options 'zoom'
+gsettings set org.gnome.desktop.background picture-uri "file://$XML"
+gsettings set org.gnome.desktop.background picture-uri-dark "file://$XML"
+echo "Slideshow com ${#IMGS[@]} imagens, $MIN min cada: $XML"

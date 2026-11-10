@@ -1,0 +1,15 @@
+{
+  "name": "Desktop Widgets (Desktop Clock)",
+  "description": "Add widgets to the desktop!",
+  "uuid": "azclock@azclock.gitlab.com",
+  "gettext-domain": "azclock",
+  "settings-schema": "org.gnome.shell.extensions.azclock",
+  "version": 21,
+  "version-name": "16.1",
+  "shell-version": ["45", "46", "47", "48", "49", "50", "51"],
+  "url": "https://gitlab.com/AndrewZaech/azclock",
+  "donations": {
+    "paypal": "azaech",
+    "buymeacoffee": "azaech"
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.colorTheme": "Dark+ Pure Black (OLED)",
+    "terminal.integrated.mouseWheelScrollSensitivity": 3,
+    "terminal.integrated.gpuAcceleration": "off",
+    "redhat.telemetry.enabled": true,
+    "terminal.integrated.initialHint": false,
+    "terminal.integrated.enableMultiLinePasteWarning": "never",
+    "editor.unicodeHighlight.invisibleCharacters": false
+}

@@ -1,0 +1,21 @@
+[Desktop Entry]
+Name=Zen Browser
+GenericName=Navegador web
+Comment=Navegador web
+Exec=@HOME@/.local/opt/zen/zen %u
+Icon=@HOME@/.local/opt/zen/browser/chrome/icons/default/default128.png
+Terminal=false
+Type=Application
+StartupNotify=true
+StartupWMClass=zen
+Categories=Network;WebBrowser;
+MimeType=x-scheme-handler/unknown;x-scheme-handler/about;text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;application/x-xpinstall;application/pdf;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=Nova janela
+Exec=@HOME@/.local/opt/zen/zen --new-window %u
+
+[Desktop Action new-private-window]
+Name=Nova janela privada
+Exec=@HOME@/.local/opt/zen/zen --private-window %u
