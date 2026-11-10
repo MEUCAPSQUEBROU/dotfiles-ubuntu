@@ -62,6 +62,8 @@ ok "extensões -> gnome/extensions/"
 # ---------------------------------------------------------------- Ícones próprios
 rm -rf "$REPO/icons"; mkdir -p "$REPO/icons"
 cp -a "$HOME/.local/share/icons/Yaru-white-dark" "$REPO/icons/"
+# Ícone do Variety na barra superior, no estilo dos ícones do sistema
+cp "$HOME/.local/share/icons/hicolor/scalable/apps/variety-indicator.svg" "$REPO/icons/"
 ok "ícones Yaru-white-dark -> icons/"
 
 # ---------------------------------------------------------------- Scripts (~/.local/bin)

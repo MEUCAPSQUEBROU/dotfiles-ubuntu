@@ -107,6 +107,9 @@ rm -rf "$HOME/.local/share/icons/Yaru-white-dark"
 cp -a "$REPO/icons/Yaru-white-dark" "$HOME/.local/share/icons/"
 gtk-update-icon-cache -f -t "$HOME/.local/share/icons/Yaru-white-dark" &>/dev/null || true
 ok "ícones Yaru-white-dark (pastas brancas)"
+install -D -m 644 "$REPO/icons/variety-indicator.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/variety-indicator.svg"
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" &>/dev/null || true
+ok "ícone do Variety na barra superior"
 
 # ============================================================================
 titulo "4/9 Extensões do GNOME e scripts dos widgets"
