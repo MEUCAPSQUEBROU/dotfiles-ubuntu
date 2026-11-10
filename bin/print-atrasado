@@ -1,0 +1,69 @@
+#!/usr/bin/gjs -m
+// Print da tela inteira depois de alguns segundos, salvo em arquivo.
+// Serve para capturar menus e a Visão geral: rode, abra o menu e espere.
+//   print-atrasado            -> espera 5 s, salva em Imagens/Capturas de tela
+//   print-atrasado 8          -> espera 8 s
+//   print-atrasado 5 foto.png -> salva com esse nome/caminho
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import {programArgs, exit} from 'system';
+
+const delay = Number(programArgs[0] ?? 5) || 5;
+const pics = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) ??
+    GLib.build_filenamev([GLib.get_home_dir(), 'Imagens']);
+const stamp = GLib.DateTime.new_now_local().format('%Y-%m-%d %H-%M-%S');
+const dest = programArgs[1] ??
+    GLib.build_filenamev([pics, 'Capturas de tela', `Captura de tela de ${stamp}.png`]);
+
+const loop = new GLib.MainLoop(null, false);
+const bus = Gio.DBus.session;
+let status = 0;
+
+function capture() {
+    const token = `printatrasado${GLib.random_int()}`;
+    const sender = bus.get_unique_name().slice(1).replace(/\./g, '_');
+    const requestPath = `/org/freedesktop/portal/desktop/request/${sender}/${token}`;
+
+    const sub = bus.signal_subscribe('org.freedesktop.portal.Desktop',
+        'org.freedesktop.portal.Request', 'Response', requestPath, null,
+        Gio.DBusSignalFlags.NO_MATCH_RULE, (_c, _s, _p, _i, _n, params) => {
+            bus.signal_unsubscribe(sub);
+            const [code, results] = params.deepUnpack();
+            try {
+                if (code !== 0)
+                    throw new Error('captura cancelada');
+                GLib.mkdir_with_parents(GLib.path_get_dirname(dest), 0o755);
+                const src = Gio.File.new_for_uri(results.uri.deepUnpack());
+                src.move(Gio.File.new_for_path(dest), Gio.FileCopyFlags.OVERWRITE, null, null);
+                print(dest);
+            } catch (e) {
+                printerr(e.message);
+                status = 1;
+            }
+            loop.quit();
+        });
+
+    bus.call('org.freedesktop.portal.Desktop', '/org/freedesktop/portal/desktop',
+        'org.freedesktop.portal.Screenshot', 'Screenshot',
+        new GLib.Variant('(sa{sv})', ['', {
+            handle_token: new GLib.Variant('s', token),
+            interactive: new GLib.Variant('b', false),
+        }]),
+        null, Gio.DBusCallFlags.NONE, -1, null, (c, res) => {
+            try {
+                c.call_finish(res);
+            } catch (e) {
+                bus.signal_unsubscribe(sub);
+                printerr(e.message);
+                status = 1;
+                loop.quit();
+            }
+        });
+}
+
+GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, delay, () => {
+    capture();
+    return GLib.SOURCE_REMOVE;
+});
+loop.run();
+exit(status);

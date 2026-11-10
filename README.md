@@ -16,8 +16,20 @@
 
 ---
 
+## Galeria
+
+O Variety troca o wallpaper a cada 20 minutos; os widgets ficam sempre por cima.
+
+<table>
+  <tr>
+    <td><img src="docs/wallpaper-floresta.jpg" alt="Área de trabalho com wallpaper de floresta"></td>
+    <td><img src="docs/wallpaper-vila.jpg" alt="Área de trabalho com wallpaper de vila"></td>
+  </tr>
+</table>
+
 ## Sumário
 
+- [Galeria](#galeria)
 - [Instalação](#instalação)
 - [O que vem no pacote](#o-que-vem-no-pacote)
 - [Atalhos de teclado](#atalhos-de-teclado)
@@ -96,6 +108,13 @@ Desktop Widgets (azclock) · Clipboard Indicator · Tiling Assistant · User The
 | <kbd>Super</kbd> + <kbd>V</kbd> | Histórico da área de transferência |
 | <kbd>Super</kbd> + <kbd>E</kbd> | Abre a pasta pessoal |
 | <kbd>Super</kbd> + <kbd>M</kbd> | Central de notificações |
+
+Para capturar menus e a Visão geral (que fecham quando se aperta uma tecla de print), use o terminal:
+
+```bash
+print-atrasado      # espera 5 s, abra o menu; salva em Imagens/Capturas de tela
+print-atrasado 10   # espera 10 s
+```
 
 ## Atualizar o pacote
 

@@ -67,7 +67,7 @@ ok "ícones Yaru-white-dark -> icons/"
 # ---------------------------------------------------------------- Scripts (~/.local/bin)
 B="$REPO/bin"
 rm -rf "$B"; mkdir -p "$B"
-for s in disk-widget.sh net-widget.sh matrix-rain.py print-clipboard weather-fetch.js gerar-slideshow-wallpapers; do
+for s in disk-widget.sh net-widget.sh matrix-rain.py print-clipboard print-atrasado weather-fetch.js gerar-slideshow-wallpapers; do
   [[ -f "$HOME/.local/bin/$s" ]] && cp -a "$HOME/.local/bin/$s" "$B/"
 done
 ok "scripts dos widgets -> bin/"
